@@ -20,6 +20,6 @@ namespace CMSpline {
     }
 
     fp oscillating_function(fp x) {
-        return sin(x + 1) / (x + 1) + cos(10);
+        return sin(x + 1) / (x + 1) + cos(10 * x);
     }
 }
