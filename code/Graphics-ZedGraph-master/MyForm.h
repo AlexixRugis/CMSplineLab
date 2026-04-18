@@ -3,6 +3,7 @@
 #include "SplineInterpolation.hpp"
 #include <tuple>
 #include "Functions.hpp"
+#include <functional>
 
 namespace Graph {
 
@@ -590,168 +591,178 @@ namespace Graph {
 		double b = Convert::ToDouble(textBox2->Text);
 		size_t control_grid_n = Convert::ToUInt64(textBox3->Text);
 
+		std::function<double(double)> func;
+		std::function<double(double)> func_der1;
+		std::function<double(double)> func_der2;
 		if (radioButton1->Checked) {
-			// создаём сетку, a = -1, b = 1
-			std::vector<CMSpline::CMPoint> grid_nodes;
-			grid_nodes.reserve(grid_n);
-			double step = 2.0 / grid_n;
-			for (double i = 0; i < grid_n; i++) {
-				grid_nodes.push_back({ a + i * step, CMSpline::test_function(a + i * step)});
-			}
-			grid_nodes.push_back({ b, CMSpline::test_function(b) });
-
-			//строим кубический сплайн
-			CMSpline::CubicSpline spline = CMSpline::interpolate(grid_nodes, 0.0, 0.0);
-
-			// обновление таблиц и графиков
-			dataGridView1->Rows->Clear(); // очищение таблицы 1 от старых данных
-			for (int j = 0; j < static_cast<int>(grid_n); j++) {
-				// добавление новой строки в таблицу
-				dataGridView1->Rows->Add(j, spline.x[j], spline.x[j+1], spline.a[j], spline.b[j], spline.c[j], spline.d[j]);
-				
-				//Добавление на график
-				int points_per_segment = control_grid_n;  // чем больше, тем функция более гладкая
-				for (int k = 0; k <= points_per_segment; k++) {
-					double t = (double)k / points_per_segment;
-					double x = spline.x[j] * (1 - t) + spline.x[j + 1] * t;
-
-					double spline_value = spline.get_s_x(x, j + 1);
-					double func_value = CMSpline::test_function(x);
-
-					f1_list->Add(x, spline_value);
-					f2_list->Add(x, func_value);
-				}
-			}
-
-			LineItem^ curve1 = panel->AddCurve("Сплайн S(x)", f1_list, Color::Red, SymbolType::Circle);
-			LineItem^ curve2 = panel->AddCurve("Значение функции F(x)", f2_list, Color::Blue, SymbolType::Plus);
-
-			// Настройка внешнего вида
-			curve1->Line->Width = 2;
-			curve2->Line->Width = 2;
-
-			// Настройка осей
-			panel->XAxis->Scale->Min = a;
-			panel->XAxis->Scale->Max = b;
-
-			// Автомасштабирование по Y
-			panel->YAxis->Scale->MinAuto = true;
-			panel->YAxis->Scale->MaxAuto = true;
-
-			// Обновляем график
-			zedGraphControl1->AxisChange();
-			zedGraphControl1->Invalidate();
-
-			double max_norma_fx_sx = 0.0;
-			double x_max_norma_fx_sx = 0.0;
-			double max_norma_der1_fx_sx = 0.0;
-			double x_max_norma_der1_fx_sx = 0.0;
-			double max_norma_der2_fx_sx = 0.0;
-			double x_max_norma_der2_fx_sx = 0.0;
-
-			dataGridView2->Rows->Clear(); // очищение таблицы 2 от старых данных
-			step = 2.0 / static_cast<double>(control_grid_n);
-			size_t index_subinterval = 0;
-			for (size_t l = 0; l < control_grid_n; l++) {
-				double dot_x;
-				if (l == control_grid_n - 1)
-					dot_x = b;
-				else
-					dot_x = a + static_cast<int>(l) * step;
-				if (l % (control_grid_n / grid_n) == 0) {
-					index_subinterval++;
-				}
-				double fx = CMSpline::test_function(dot_x);
-				double sx = spline.get_s_x(dot_x, index_subinterval);
-				double fx_der = CMSpline::test_function_derivative1(dot_x);
-				double sx_der = spline.get_s_x_der(dot_x, index_subinterval);
-				double fx_der2 = CMSpline::test_function_derivative2(dot_x);
-				double sx_der2 = spline.get_s_x_der_2(dot_x, index_subinterval);
-				dataGridView2->Rows->Add(l, dot_x, fx, sx, fx - sx, fx_der, sx_der, fx_der - sx_der, fx_der2, sx_der2, fx_der2 - sx_der2);
-
-				if (abs(fx - sx) > max_norma_fx_sx) {
-					max_norma_fx_sx = abs(fx - sx);
-					x_max_norma_fx_sx = dot_x;
-				}
-				if (abs(fx_der - sx_der) > max_norma_der1_fx_sx) {
-					max_norma_der1_fx_sx = abs(fx_der - sx_der);
-					x_max_norma_der1_fx_sx = dot_x;
-				}
-				if (abs(fx_der2 - sx_der2) > max_norma_der2_fx_sx) {
-					max_norma_der2_fx_sx = abs(fx_der2 - sx_der2);
-					x_max_norma_der2_fx_sx = dot_x;
-				}
-
-				f_der1->Add(dot_x, fx_der);
-				f_der2->Add(dot_x, fx_der2);
-				s_der1->Add(dot_x, sx_der);
-				s_der2->Add(dot_x, sx_der2);
-				f_s_sub->Add(dot_x, abs(fx - sx));
-				f_s_der1->Add(dot_x, abs(fx_der - sx_der));
-				f_s_der2->Add(dot_x, abs(fx_der2 - sx_der2));
-			}
-
-			LineItem^ curve3 = panel2->AddCurve("Производная функции F(x)", f_der1, Color::Red, SymbolType::Circle);
-			LineItem^ curve4 = panel2->AddCurve("Вторая производная функции F(x)", f_der2, Color::Blue, SymbolType::Plus);
-			LineItem^ curve5 = panel2->AddCurve("Производная сплайнa S(x)", s_der1, Color::Green, SymbolType::None);
-			LineItem^ curve6 = panel2->AddCurve("Вторая производная сплайнa S(x)", s_der2, Color::Yellow, SymbolType::Diamond);
-
-			LineItem^ curve7 = panel3->AddCurve("Погрешность между функцией F(x) и сплайном S(x)", f_s_sub, Color::Red, SymbolType::Circle);
-			LineItem^ curve8 = panel3->AddCurve("Погрешность между производными: функции F(x) и сплайна S(x)", f_s_der1, Color::Violet, SymbolType::Diamond);
-			LineItem^ curve9 = panel3->AddCurve("Погрешность между вторыми производными: функции F(x) и сплайна S(x)", f_s_der2, Color::Blue, SymbolType::Plus);
-
-			// Настройка внешнего вида
-			curve3->Line->Width = 2;
-			curve4->Line->Width = 2;
-			curve5->Line->Width = 2;
-			curve6->Line->Width = 2;
-			curve7->Line->Width = 2;
-			curve8->Line->Width = 2;
-			curve9->Line->Width = 2;
-
-			// Настройка осей
-			panel2->XAxis->Scale->Min = a;
-			panel2->XAxis->Scale->Max = b;
-			panel3->XAxis->Scale->Min = a;
-			panel3->XAxis->Scale->Max = b;
-
-			// Автомасштабирование по Y
-			panel2->YAxis->Scale->MinAuto = true;
-			panel2->YAxis->Scale->MaxAuto = true;
-			panel3->YAxis->Scale->MinAuto = true;
-			panel3->YAxis->Scale->MaxAuto = true;
-
-			// Обновляем графики
-			zedGraphControl2->AxisChange();
-			zedGraphControl2->Invalidate();
-			zedGraphControl3->AxisChange();
-			zedGraphControl3->Invalidate();
-
-			textBox9->Clear();
-			textBox9->AppendText(String::Format("Сетка сплайна: n = \"{0}\"\r\n", grid_n));
-			textBox9->AppendText(String::Format("Контрольная сетка: N = \"{0}\"\r\n", control_grid_n));
-			textBox9->AppendText(String::Format("Погрешность сплайна на контрольной сетке\r\n"));
-			textBox9->AppendText(String::Format(
-				"max |F(x_j) - S(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n\r\n",
-				max_norma_fx_sx, x_max_norma_fx_sx));
-
-			textBox9->AppendText("Погрешность производной на контрольной сетке\r\n");
-			textBox9->AppendText(String::Format(
-				"max |F'(x_j) - S'(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n\r\n",
-				max_norma_der1_fx_sx, x_max_norma_der1_fx_sx));
-
-			textBox9->AppendText("Погрешность второй производной на контрольной сетке\r\n");
-			textBox9->AppendText(String::Format(
-				"max |F''(x_j) - S''(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n",
-				max_norma_der2_fx_sx, x_max_norma_der2_fx_sx));
-
+			func = CMSpline::test_function;
+			func_der1 = CMSpline::test_function_derivative1;
+			func_der2 = CMSpline::test_function_derivative2;
 		}
 		else if (radioButton2->Checked) {
-
+			func = CMSpline::main_function;
+			func_der1 = CMSpline::main_function_derivative1;
+			func_der2 = CMSpline::main_function_derivative2;
 		}
 		else if (radioButton3->Checked) {
-
+			func = CMSpline::oscillating_function;
+			func_der1 = CMSpline::oscillating_function_derivative1;
+			func_der2 = CMSpline::oscillating_function_derivative2;
 		}
+			
+		// создаём сетку, a = -1, b = 1
+		std::vector<CMSpline::CMPoint> grid_nodes;
+		grid_nodes.reserve(grid_n);
+		double step = (b - a) / grid_n;
+		for (double i = 0; i < grid_n; i++) {
+			grid_nodes.push_back({ a + i * step, func(a + i * step)});
+		}
+		grid_nodes.push_back({ b, func(b) });
+		
+		//строим кубический сплайн
+		CMSpline::CubicSpline spline = CMSpline::interpolate(grid_nodes, 0.0, 0.0);
+
+		// обновление таблиц и графиков
+		dataGridView1->Rows->Clear(); // очищение таблицы 1 от старых данных
+		for (int j = 0; j < static_cast<int>(grid_n); j++) {
+			// добавление новой строки в таблицу
+			dataGridView1->Rows->Add(j, spline.x[j], spline.x[j+1], spline.a[j], spline.b[j], spline.c[j], spline.d[j]);
+			
+			//Добавление на график
+			int points_per_segment = control_grid_n;  // чем больше, тем функция более гладкая
+			for (int k = 0; k <= points_per_segment; k++) {
+				double t = (double)k / points_per_segment;
+				double x = spline.x[j] * (1 - t) + spline.x[j + 1] * t;
+									double spline_value = spline.get_s_x(x, j + 1);
+				double func_value = func(x);
+				f1_list->Add(x, spline_value);
+				f2_list->Add(x, func_value);
+			}
+		}
+
+		LineItem^ curve1 = panel->AddCurve("Сплайн S(x)", f1_list, Color::Red, SymbolType::Circle);
+		LineItem^ curve2 = panel->AddCurve("Значение функции F(x)", f2_list, Color::Blue, SymbolType::Plus);
+
+		// Настройка внешнего вида
+		curve1->Line->Width = 2;
+		curve2->Line->Width = 2;
+
+		// Настройка осей
+		panel->XAxis->Scale->Min = a;
+		panel->XAxis->Scale->Max = b;
+
+		// Автомасштабирование по Y
+		panel->YAxis->Scale->MinAuto = true;
+		panel->YAxis->Scale->MaxAuto = true;
+
+		// Обновляем график
+		zedGraphControl1->AxisChange();
+		zedGraphControl1->Invalidate();
+
+		double max_norma_fx_sx = 0.0;
+		double x_max_norma_fx_sx = 0.0;
+		double max_norma_der1_fx_sx = 0.0;
+		double x_max_norma_der1_fx_sx = 0.0;
+		double max_norma_der2_fx_sx = 0.0;
+		double x_max_norma_der2_fx_sx = 0.0;
+		
+		dataGridView2->Rows->Clear(); // очищение таблицы 2 от старых данных
+		step = (b-a) / static_cast<double>(control_grid_n);
+		size_t index_subinterval = 0;
+		for (size_t l = 0; l < control_grid_n; l++) {
+			double dot_x;
+			if (l == control_grid_n - 1)
+				dot_x = b;
+			else
+				dot_x = a + static_cast<int>(l) * step;
+			if (l % (control_grid_n / grid_n) == 0) {
+				index_subinterval++;
+			}
+			double fx = func(dot_x);
+			double sx = spline.get_s_x(dot_x, index_subinterval);
+			double fx_der = func_der1(dot_x);
+			double sx_der = spline.get_s_x_der(dot_x, index_subinterval);
+			double fx_der2 = func_der2(dot_x);
+			double sx_der2 = spline.get_s_x_der_2(dot_x, index_subinterval);
+			dataGridView2->Rows->Add(l, dot_x, fx, sx, fx - sx, fx_der, sx_der, fx_der - sx_der, fx_der2, sx_der2, fx_der2 - sx_der2);
+
+			if (abs(fx - sx) > max_norma_fx_sx) {
+				max_norma_fx_sx = abs(fx - sx);
+				x_max_norma_fx_sx = dot_x;
+			}
+			if (abs(fx_der - sx_der) > max_norma_der1_fx_sx) {
+				max_norma_der1_fx_sx = abs(fx_der - sx_der);
+				x_max_norma_der1_fx_sx = dot_x;
+			}
+			if (abs(fx_der2 - sx_der2) > max_norma_der2_fx_sx) {
+				max_norma_der2_fx_sx = abs(fx_der2 - sx_der2);
+				x_max_norma_der2_fx_sx = dot_x;
+			}
+
+			f_der1->Add(dot_x, fx_der);
+			f_der2->Add(dot_x, fx_der2);
+			s_der1->Add(dot_x, sx_der);
+			s_der2->Add(dot_x, sx_der2);
+			f_s_sub->Add(dot_x, abs(fx - sx));
+			f_s_der1->Add(dot_x, abs(fx_der - sx_der));
+			f_s_der2->Add(dot_x, abs(fx_der2 - sx_der2));
+		}
+
+		LineItem^ curve3 = panel2->AddCurve("Производная функции F(x)", f_der1, Color::Red, SymbolType::Circle);
+		LineItem^ curve4 = panel2->AddCurve("Вторая производная функции F(x)", f_der2, Color::Blue, SymbolType::Plus);
+		LineItem^ curve5 = panel2->AddCurve("Производная сплайнa S(x)", s_der1, Color::Green, SymbolType::None);
+		LineItem^ curve6 = panel2->AddCurve("Вторая производная сплайнa S(x)", s_der2, Color::Yellow, SymbolType::Diamond);
+
+		LineItem^ curve7 = panel3->AddCurve("Погрешность между функцией F(x) и сплайном S(x)", f_s_sub, Color::Red, SymbolType::Circle);
+		LineItem^ curve8 = panel3->AddCurve("Погрешность между производными: функции F(x) и сплайна S(x)", f_s_der1, Color::Violet, SymbolType::Diamond);
+		LineItem^ curve9 = panel3->AddCurve("Погрешность между вторыми производными: функции F(x) и сплайна S(x)", f_s_der2, Color::Blue, SymbolType::Plus);
+
+		// Настройка внешнего вида
+		curve3->Line->Width = 2;
+		curve4->Line->Width = 2;
+		curve5->Line->Width = 2;
+		curve6->Line->Width = 2;
+		curve7->Line->Width = 2;
+		curve8->Line->Width = 2;
+		curve9->Line->Width = 2;
+
+		// Настройка осей
+		panel2->XAxis->Scale->Min = a;
+		panel2->XAxis->Scale->Max = b;
+		panel3->XAxis->Scale->Min = a;
+		panel3->XAxis->Scale->Max = b;
+
+		// Автомасштабирование по Y
+		panel2->YAxis->Scale->MinAuto = true;
+		panel2->YAxis->Scale->MaxAuto = true;
+		panel3->YAxis->Scale->MinAuto = true;
+		panel3->YAxis->Scale->MaxAuto = true;
+
+		// Обновляем графики
+		zedGraphControl2->AxisChange();
+		zedGraphControl2->Invalidate();
+		zedGraphControl3->AxisChange();
+		zedGraphControl3->Invalidate();
+
+		textBox9->Clear();
+		textBox9->AppendText(String::Format("Сетка сплайна: n = \"{0}\"\r\n", grid_n));
+		textBox9->AppendText(String::Format("Контрольная сетка: N = \"{0}\"\r\n", control_grid_n));
+		textBox9->AppendText(String::Format("Погрешность сплайна на контрольной сетке\r\n"));
+		textBox9->AppendText(String::Format(
+			"max |F(x_j) - S(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n\r\n",
+			max_norma_fx_sx, x_max_norma_fx_sx));
+
+		textBox9->AppendText("Погрешность производной на контрольной сетке\r\n");
+		textBox9->AppendText(String::Format(
+			"max |F'(x_j) - S'(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n\r\n",
+			max_norma_der1_fx_sx, x_max_norma_der1_fx_sx));
+
+		textBox9->AppendText("Погрешность второй производной на контрольной сетке\r\n");
+		textBox9->AppendText(String::Format(
+			"max |F''(x_j) - S''(x_j)| = \"{0:F6}\" при x = \"{1:F6}\"\r\n",
+			max_norma_der2_fx_sx, x_max_norma_der2_fx_sx));
+
+		
 
 	}
 
