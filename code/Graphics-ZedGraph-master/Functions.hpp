@@ -36,26 +36,32 @@ namespace CMSpline {
     }
 
     fp main_function(fp x) {
+        if (abs(x + 1) < 1e-10) return 1.0;  // предел sin(x+1)/(x+1) при x-> -1 равен 1
         return sin(x + 1) / (x + 1);
     }
 
     fp main_function_derivative1(fp x) {
+        if (std::abs(x + 1) < 1e-10) return 0.0;
         return -(sin(x + 1) + (-x-1) * cos(x+1)) / (x * x + 2 * x + 1);
     }
 
     fp main_function_derivative2(fp x) {
+        if (std::abs(x + 1) < 1e-10) return -1.0 / 3.0;
         return -((x * x + 2 * x + 1) * sin(x + 1) + 2 * (x + 1) * cos(x + 1)) / (x * x * x + 3 * x * x + 3 * x + 1);
     }
 
     fp oscillating_function(fp x) {
+        if (std::abs(x + 1) < 1e-10) return 1.0 + cos(-10);
         return sin(x + 1) / (x + 1) + cos(10 * x);
     }
 
     fp oscillating_function_derivative1(fp x) {
+        if (std::abs(x + 1) < 1e-10) return - 10 * sin(-10);
         return -(sin(x + 1) + (-x - 1) * cos(x + 1)) / (x * x + 2 * x + 1) - 10 * sin(10 * x);
     }
 
     fp oscillating_function_derivative2(fp x) {
+        if (std::abs(x + 1) < 1e-10) return -1.0 / 3.0 - 100 * cos(-10);
         return -((x * x + 2 * x + 1) * sin(x + 1) + 2 * (x + 1) * cos(x + 1)) / (x * x * x + 3 * x * x + 3 * x + 1) - 100 * cos(10 * x);
     }
 }
