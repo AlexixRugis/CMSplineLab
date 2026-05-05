@@ -25,7 +25,7 @@ namespace CMSpline {
                 return NAN;
             if (x_ < x[i - 1] || x_ > x[i])
                 return NAN;
-            return a[i] + b[i] * (x_ - x[i]) + c[i] / 2 * (x_ - x[i]) * (x_ - x[i]) + d[i] / 6 * (x_ - x[i]) * (x_ - x[i]) * (x_ - x[i]);
+            return a[i] + b[i] * (x_ - x[i]) + c[i] / 2.0 * (x_ - x[i]) * (x_ - x[i]) + d[i] / 6.0 * (x_ - x[i]) * (x_ - x[i]) * (x_ - x[i]);
         }
 
         fp get_s_x_der(fp x_, sz i) const {
@@ -33,7 +33,7 @@ namespace CMSpline {
                 return NAN;
             if (x_ < x[i - 1] || x_ > x[i])
                 return NAN;
-            return b[i] + 2 * c[i] * (x_ - x[i]) + 3 * d[i]  * (x_ - x[i]) * (x_ - x[i]);
+            return b[i] + c[i] * (x_ - x[i]) + d[i] / 2.0 * (x_ - x[i]) * (x_ - x[i]);
         }
 
         fp get_s_x_der_2(fp x_, sz i) const {
@@ -41,7 +41,7 @@ namespace CMSpline {
                 return NAN;
             if (x_ < x[i - 1] || x_ > x[i])
                 return NAN;
-            return b[i] + 2 * c[i] + 6 * d[i] * (x_ - x[i]);
+            return c[i] + d[i] * (x_ - x[i]);
         }
     };
 

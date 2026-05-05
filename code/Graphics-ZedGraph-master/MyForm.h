@@ -624,16 +624,17 @@ namespace Graph {
 
 		// обновление таблиц и графиков
 		dataGridView1->Rows->Clear(); // очищение таблицы 1 от старых данных
-		for (int j = 0; j < static_cast<int>(grid_n); j++) {
+		for (int j = 1; j < static_cast<int>(grid_n) + 1; j++) {
 			// добавление новой строки в таблицу
-			dataGridView1->Rows->Add(j, spline.x[j], spline.x[j+1], spline.a[j], spline.b[j], spline.c[j], spline.d[j]);
+			dataGridView1->Rows->Add(j, spline.x[j-1], spline.x[j], spline.a[j], spline.b[j], spline.c[j], spline.d[j]);
 			
 			//Добавление на график
 			int points_per_segment = control_grid_n;  // чем больше, тем функция более гладкая
 			for (int k = 0; k <= points_per_segment; k++) {
 				double t = (double)k / points_per_segment;
-				double x = spline.x[j] * (1 - t) + spline.x[j + 1] * t;
-									double spline_value = spline.get_s_x(x, j + 1);
+				double x = spline.x[j-1] * (1 - t) + spline.x[j] * t;
+				double spline_value = spline.get_s_x(x, j);
+				
 				double func_value = func(x);
 				f1_list->Add(x, spline_value);
 				f2_list->Add(x, func_value);
@@ -707,6 +708,47 @@ namespace Graph {
 			f_s_der1->Add(dot_x, abs(fx_der - sx_der));
 			f_s_der2->Add(dot_x, abs(fx_der2 - sx_der2));
 		}
+
+		//for (size_t l = 0; l <= grid_n; l++) {
+		//	double dot_x = a + l * step;   // узлы основной сетки: x0, x1, ..., xn
+		//	// Находим номер сегмента, которому принадлежит dot_x
+		//	// Для узлов x0..x_{n-1} сегмент = l+1, для xn (последний) сегмент = n
+		//	size_t segment = (l == grid_n) ? grid_n : l + 1;
+
+		//	double fx = func(dot_x);
+		//	double sx = spline.get_s_x(dot_x, segment);
+		//	double fx_der = func_der1(dot_x);
+		//	double sx_der = spline.get_s_x_der(dot_x, segment);
+		//	double fx_der2 = func_der2(dot_x);
+		//	double sx_der2 = spline.get_s_x_der_2(dot_x, segment);
+
+		//	dataGridView2->Rows->Add(l, dot_x, fx, sx, fx - sx,
+		//		fx_der, sx_der, fx_der - sx_der,
+		//		fx_der2, sx_der2, fx_der2 - sx_der2);
+
+		//	// Поиск максимумов погрешностей
+		//	if (abs(fx - sx) > max_norma_fx_sx) {
+		//		max_norma_fx_sx = abs(fx - sx);
+		//		x_max_norma_fx_sx = dot_x;
+		//	}
+		//	if (abs(fx_der - sx_der) > max_norma_der1_fx_sx) {
+		//		max_norma_der1_fx_sx = abs(fx_der - sx_der);
+		//		x_max_norma_der1_fx_sx = dot_x;
+		//	}
+		//	if (abs(fx_der2 - sx_der2) > max_norma_der2_fx_sx) {
+		//		max_norma_der2_fx_sx = abs(fx_der2 - sx_der2);
+		//		x_max_norma_der2_fx_sx = dot_x;
+		//	}
+
+		//	// Заполняем списки для графиков погрешностей
+		//	f_der1->Add(dot_x, fx_der);
+		//	f_der2->Add(dot_x, fx_der2);
+		//	s_der1->Add(dot_x, sx_der);
+		//	s_der2->Add(dot_x, sx_der2);
+		//	f_s_sub->Add(dot_x, abs(fx - sx));
+		//	f_s_der1->Add(dot_x, abs(fx_der - sx_der));
+		//	f_s_der2->Add(dot_x, abs(fx_der2 - sx_der2));
+		//}
 
 		LineItem^ curve3 = panel2->AddCurve("Производная функции F(x)", f_der1, Color::Red, SymbolType::Circle);
 		LineItem^ curve4 = panel2->AddCurve("Вторая производная функции F(x)", f_der2, Color::Blue, SymbolType::Plus);
